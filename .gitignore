@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.py[oc]
+outputs/
+_qwen3_clone_convert_*.wav
+.DS_Store

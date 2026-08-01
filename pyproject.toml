@@ -1,0 +1,12 @@
+[project]
+name = "voice-clone"
+version = "0.1.0"
+description = "Local Qwen3 voice-clone TTS (MLX) — see README.md"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "mlx-audio>=0.4.0",
+    "pydantic>=2.0",
+    "uvicorn>=0.30.0",
+]

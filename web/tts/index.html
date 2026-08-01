@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Qwen3 clone — generate</title>
+  <style>
+    :root {
+      --bg: #0f1218;
+      --panel: #171b24;
+      --text: #e8eaef;
+      --muted: #8b93a7;
+      --accent: #6ea8fe;
+      --border: #2a3142;
+      --ok: #7dd3a0;
+      --err: #f0a0a0;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    main { max-width: 52rem; margin: 0 auto; padding: 1.75rem 1.25rem 3rem; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 0.35rem; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+    }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.35rem; }
+    select, input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    input[type="range"] { width: 100%; }
+    .row { display: grid; gap: 0.75rem; }
+    @media (min-width: 560px) {
+      .row.cols-2 { grid-template-columns: 1fr 1fr; }
+    }
+    .speed-val { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
+    .options summary { cursor: pointer; color: var(--accent); font-size: 0.9rem; user-select: none; }
+    .options { margin-top: 0.5rem; }
+    .options[open] summary { margin-bottom: 0.75rem; }
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 8px;
+      padding: 0.65rem 1.1rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: #0a0c10;
+    }
+    button.secondary {
+      background: #2a3548;
+      color: var(--text);
+      font-weight: 600;
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .log {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 280px;
+      overflow-y: auto;
+      background: #0a0c12;
+      border-radius: 6px;
+      padding: 0.75rem;
+      color: #c8cdd8;
+      margin: 0;
+    }
+    .result { margin-top: 1rem; }
+    .result audio { width: 100%; margin-top: 0.5rem; }
+    .path { font-size: 0.8rem; color: var(--ok); word-break: break-all; }
+    .err { color: var(--err); font-size: 0.85rem; margin-top: 0.5rem; }
+    .radio-line { display: flex; align-items: flex-start; gap: 0.5rem; margin: 0.4rem 0; font-size: 0.88rem; }
+    .radio-line input { margin-top: 0.2rem; }
+    .suggest-panel {
+      margin-top: 0.75rem;
+      padding: 0.75rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #12151c;
+      font-size: 0.88rem;
+    }
+    .suggest-panel button.secondary { background: #2a3548; color: var(--text); margin-right: 0.5rem; }
+    #lastOutputWrap { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+    #lastBasename { font-size: 1.05rem; font-family: ui-monospace, monospace; color: var(--ok); }
+    #docPreview {
+      margin: 0.5rem 0 0;
+      padding: 0.65rem 0.75rem;
+      max-height: 11rem;
+      overflow: auto;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0a0c12;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      color: #c8cdd8;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Voice clone (Qwen3 TTS)</h1>
+    <p class="sub">Local UI for <code>qwen3_clone.py</code>. Pick a script, set speed, Generate. Optional goal length → speed hint or ffmpeg stretch.</p>
+
+    <section>
+      <label for="doc">Script (<span id="docDir"></span>)</label>
+      <select id="doc"></select>
+      <label for="docPreview" style="margin-top:0.65rem">Preview</label>
+      <pre id="docPreview" aria-live="polite"></pre>
+    </section>
+
+    <section>
+      <label for="speed">Speaking speed <span class="speed-val" id="speedOut">1.08</span></label>
+      <input type="range" id="speed" min="0.6" max="1.5" step="0.01" value="1.08" />
+      <p class="hint">Higher = shorter. Each run writes a new file.</p>
+      <div id="lastOutputWrap" hidden>
+        <label style="margin-top:0">Last generated file</label>
+        <div id="lastBasename"></div>
+        <div id="lastFromScript" class="hint" style="margin-top:0.35rem"></div>
+        <div id="lastPathFull" class="hint" style="word-break:break-all;margin-top:0.25rem"></div>
+      </div>
+    </section>
+
+    <section>
+      <label class="radio-line" style="margin:0">
+        <input type="checkbox" id="fast" checked />
+        <span><strong>Faster</strong> — bigger chunks per pass (good for long scripts).</span>
+      </label>
+    </section>
+
+    <section>
+      <label for="targetMmss">Goal length (optional)</label>
+      <input type="text" id="targetMmss" placeholder="e.g. 2:34 or 154" autocomplete="off" />
+      <p class="hint">Optional. Use with post-process buttons below, or before Generate for an inline hint.</p>
+      <label class="radio-line" style="margin-top:0.65rem">
+        <input type="checkbox" id="fitFfmpeg" />
+        <span><strong>ffmpeg fit on export</strong> — stretch output to the goal length (no speed hint).</span>
+      </label>
+    </section>
+
+    <details class="options">
+      <summary>Advanced</summary>
+      <div class="row cols-2" style="margin-top:0.75rem">
+        <div>
+          <label for="quality">Quality</label>
+          <select id="quality"><option value="lite" selected>lite (faster)</option><option value="pro">pro</option></select>
+        </div>
+        <div>
+          <label for="chunkChars">Chunk chars</label>
+          <input type="number" id="chunkChars" min="200" max="2000" value="700" />
+        </div>
+        <div>
+          <label for="temperature">Temperature</label>
+          <input type="number" id="temperature" min="0" max="1" step="0.05" value="0.45" />
+        </div>
+        <div>
+          <label for="maxTokens">Max tokens</label>
+          <input type="number" id="maxTokens" min="512" max="8192" step="256" value="4096" />
+        </div>
+      </div>
+    </details>
+
+    <section id="postProcessSection">
+      <label for="outputPick">Output clip</label>
+      <select id="outputPick" style="width:100%;margin-bottom:0.35rem"></select>
+      <button type="button" class="secondary" id="btnRefreshOutputs" style="margin-bottom:0.5rem">Refresh</button>
+      <p id="postRunMismatch" class="err" style="display:none;font-size:0.85rem;margin:0.35rem 0"></p>
+      <button type="button" class="secondary" id="btnSuggestPost">Suggest next speed</button>
+      <button type="button" class="secondary" id="btnFitPost">Stretch to goal (ffmpeg)</button>
+      <div id="suggestPanel" class="suggest-panel" style="margin-top:0.75rem" hidden>
+        <div id="suggestText"></div>
+        <button type="button" class="secondary" id="applySuggest">Apply suggested speed</button>
+        <span class="hint">Then click Generate again to re-synthesize.</span>
+      </div>
+    </section>
+
+    <section style="margin-top:1rem">
+      <button type="button" id="go">Generate</button>
+      <p id="status" class="hint" style="margin-top:0.75rem"></p>
+      <pre id="log" class="log" hidden></pre>
+      <div id="result" class="result" hidden>
+        <div id="statsLine" class="hint" style="margin-bottom:0.5rem"></div>
+        <div class="path" id="pathOut" style="font-size:0.75rem"></div>
+        <audio id="player" controls></audio>
+      </div>
+      <p id="err" class="err" hidden></p>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const speed = $("speed");
+    const speedOut = $("speedOut");
+    speed.addEventListener("input", () => { speedOut.textContent = Number(speed.value).toFixed(2); });
+
+    function getSelectedDoc() {
+      const v = $("doc").value;
+      return v && v.trim() ? v : null;
+    }
+
+    async function syncDocPreview() {
+      const pre = $("docPreview");
+      const name = getSelectedDoc();
+      if (!name) {
+        pre.textContent = "";
+        return;
+      }
+      pre.textContent = "Loading…";
+      try {
+        const r = await fetch("/api/document-text?name=" + encodeURIComponent(name));
+        if (!r.ok) throw new Error(await r.text());
+        const d = await r.json();
+        pre.textContent = d.text + (d.truncated ? "\n\n… (truncated)" : "");
+      } catch (e) {
+        pre.textContent = String(e.message || e);
+      }
+    }
+
+    async function loadDocs(preselectName) {
+      const r = await fetch("/api/documents");
+      const data = await r.json();
+      $("docDir").textContent = data.documents_dir;
+      const sel = $("doc");
+      const keep = preselectName === undefined ? sel.value : preselectName;
+      sel.innerHTML = "";
+      if (!data.files || data.files.length === 0) {
+        const o = document.createElement("option");
+        o.value = "";
+        o.textContent = "(no .txt in documents)";
+        sel.appendChild(o);
+        await syncDocPreview();
+        refreshPostRunCopy();
+        return;
+      }
+      for (const name of data.files) {
+        const o = document.createElement("option");
+        o.value = name;
+        o.textContent = name;
+        sel.appendChild(o);
+      }
+      const hit = keep && [...sel.options].some((opt) => opt.value === keep);
+      sel.value = hit ? keep : sel.options[0].value;
+      await syncDocPreview();
+      refreshPostRunCopy();
+    }
+
+    function parseTarget(s) {
+      const t = s.trim();
+      if (!t) return null;
+      if (/^\d+(\.\d+)?$/.test(t)) return parseFloat(t);
+      const m = t.match(/^(\d+):(\d{1,2})(?:\.(\d+))?$/);
+      if (m) {
+        const mm = parseInt(m[1], 10);
+        const ss = parseInt(m[2], 10);
+        const frac = m[3] ? parseFloat("0." + m[3]) : 0;
+        return mm * 60 + ss + frac;
+      }
+      return NaN;
+    }
+
+    function fmtDur(sec) {
+      const s = Math.round(sec);
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return m + ":" + String(r).padStart(2, "0");
+    }
+
+    let lastGeneratedPath = null;
+    let lastSourceScript = null;
+
+    function getSelectedOutputPath() {
+      const v = $("outputPick").value;
+      return v && v.trim() ? v : null;
+    }
+
+    async function loadOutputs(preselectPath) {
+      const r = await fetch("/api/outputs");
+      const data = await r.json();
+      const sel = $("outputPick");
+      sel.innerHTML = "";
+      if (!data.files || data.files.length === 0) {
+        const o = document.createElement("option");
+        o.value = "";
+        o.textContent = "(no .m4a in outputs)";
+        sel.appendChild(o);
+        refreshPostRunCopy();
+        return;
+      }
+      for (const f of data.files) {
+        const o = document.createElement("option");
+        o.value = f.path;
+        o.textContent = f.name;
+        sel.appendChild(o);
+      }
+      if (preselectPath) {
+        const hit = [...sel.options].find((opt) => opt.value === preselectPath);
+        sel.value = hit ? preselectPath : sel.options[0].value;
+      } else {
+        sel.selectedIndex = 0;
+      }
+      refreshPostRunCopy();
+      updateLastFromScriptLine();
+    }
+
+    function updateLastFromScriptLine() {
+      const line = $("lastFromScript");
+      const pick = getSelectedOutputPath();
+      if (!pick || !lastGeneratedPath || !lastSourceScript) {
+        line.innerHTML = "";
+        return;
+      }
+      if (pick === lastGeneratedPath) {
+        line.innerHTML = `Last <strong>Generate</strong> produced this file from script: <strong>${lastSourceScript}</strong>`;
+      } else {
+        line.innerHTML =
+          `<span class="hint">Selected clip is not the last Generate from this tab; source script may differ.</span>`;
+      }
+    }
+
+    function refreshPostRunCopy() {
+      const mm = $("postRunMismatch");
+      const sel = $("outputPick");
+      if (!sel.options.length || sel.value === "") {
+        mm.style.display = "none";
+        return;
+      }
+      if (lastSourceScript && $("doc").value && $("doc").value !== lastSourceScript) {
+        mm.style.display = "block";
+        mm.textContent =
+          `Script is "${$("doc").value}" for the next Generate — different from the clip you’re adjusting.`;
+      } else {
+        mm.style.display = "none";
+      }
+    }
+
+    $("doc").addEventListener("change", () => {
+      syncDocPreview();
+      refreshPostRunCopy();
+    });
+
+    $("outputPick").addEventListener("change", () => {
+      updateLastFromScriptLine();
+    });
+
+    $("btnRefreshOutputs").addEventListener("click", () => {
+      loadOutputs(getSelectedOutputPath());
+    });
+
+    function wireApplySuggest(sug) {
+      $("applySuggest").onclick = () => {
+        const lo = parseFloat(speed.min);
+        const hi = parseFloat(speed.max);
+        speed.value = String(Math.min(hi, Math.max(lo, sug)));
+        speed.dispatchEvent(new Event("input"));
+      };
+    }
+
+    function showSuggestPanel(s) {
+      const d = s.duration_s;
+      const t = s.target_s;
+      const sug = s.suggested_speed;
+      const delta = s.delta_s;
+      const adj = delta > 0 ? "long" : delta < 0 ? "short" : "on";
+      $("suggestText").innerHTML =
+        `Output <strong>${fmtDur(d)}</strong> vs goal <strong>${fmtDur(t)}</strong> (${adj} by ${Math.abs(delta).toFixed(1)}s). ` +
+        `Try speed <strong>${sug.toFixed(3)}</strong> next.`;
+      $("suggestPanel").hidden = false;
+      $("suggestPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      wireApplySuggest(s.suggested_speed);
+    }
+
+    $("btnSuggestPost").addEventListener("click", async () => {
+      const err = $("err");
+      err.hidden = true;
+      const out = getSelectedOutputPath();
+      if (!out) {
+        err.textContent = "Pick an output clip.";
+        err.hidden = false;
+        return;
+      }
+      const ts = parseTarget($("targetMmss").value);
+      if ($("targetMmss").value.trim() === "" || ts == null || Number.isNaN(ts) || ts <= 0) {
+        err.textContent = "Enter a goal length (e.g. 2:34) first.";
+        err.hidden = false;
+        return;
+      }
+      try {
+        const r = await fetch("/api/suggest-speed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            output_path: out,
+            target_seconds: ts,
+            current_speed: parseFloat(speed.value),
+          }),
+        });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        showSuggestPanel({
+          duration_s: data.duration_s,
+          target_s: data.target_s,
+          delta_s: data.delta_s,
+          suggested_speed: data.suggested_speed,
+        });
+      } catch (e) {
+        err.textContent = String(e.message || e);
+        err.hidden = false;
+      }
+    });
+
+    $("btnFitPost").addEventListener("click", async () => {
+      const err = $("err");
+      err.hidden = true;
+      const out = getSelectedOutputPath();
+      if (!out) {
+        err.textContent = "Pick an output clip.";
+        err.hidden = false;
+        return;
+      }
+      const ts = parseTarget($("targetMmss").value);
+      if ($("targetMmss").value.trim() === "" || ts == null || Number.isNaN(ts) || ts <= 0) {
+        err.textContent = "Enter a goal length for ffmpeg stretch.";
+        err.hidden = false;
+        return;
+      }
+      try {
+        const r = await fetch("/api/fit-output", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ output_path: out, target_seconds: ts }),
+        });
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        $("pathOut").textContent = data.output_path;
+        $("player").src = "/api/audio?path=" + encodeURIComponent(data.output_path);
+        $("status").textContent = "Stretched file ready.";
+        await loadOutputs(data.output_path);
+        $("result").hidden = false;
+      } catch (e) {
+        err.textContent = String(e.message || e);
+        err.hidden = false;
+      }
+    });
+
+    $("go").addEventListener("click", async () => {
+      const err = $("err");
+      const logEl = $("log");
+      const result = $("result");
+      err.hidden = true;
+      result.hidden = true;
+      logEl.hidden = false;
+      logEl.textContent = "";
+      $("status").textContent = "Running…";
+      $("go").disabled = true;
+      $("suggestPanel").hidden = true;
+
+      const targetRaw = $("targetMmss").value;
+      const ts = parseTarget(targetRaw);
+      const fitFfmpeg = $("fitFfmpeg").checked;
+      if (targetRaw.trim() && (Number.isNaN(ts) || ts <= 0)) {
+        err.textContent = "Could not parse target length. Use seconds (155) or mm:ss (2:35).";
+        err.hidden = false;
+        $("go").disabled = false;
+        $("status").textContent = "";
+        return;
+      }
+      if (fitFfmpeg && !targetRaw.trim()) {
+        err.textContent = "Set a target length to use ffmpeg fit.";
+        err.hidden = false;
+        $("go").disabled = false;
+        $("status").textContent = "";
+        return;
+      }
+
+      const body = {
+        text_file: $("doc").value,
+        speed: parseFloat(speed.value),
+        quality: $("quality").value,
+        chunk_chars: parseInt($("chunkChars").value, 10),
+        fast: $("fast").checked,
+        temperature: parseFloat($("temperature").value),
+        max_tokens: parseInt($("maxTokens").value, 10),
+        target_seconds: !targetRaw.trim() ? null : ts,
+        fit_ffmpeg: fitFfmpeg,
+      };
+
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(t || res.statusText);
+        }
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        let finalPath = "";
+        let lastSuggest = null;
+        let lastDuration = null;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() || "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            let payload;
+            try {
+              payload = JSON.parse(line.slice(6));
+            } catch { continue; }
+            if (payload.log) logEl.textContent += payload.log;
+            if (payload.error) throw new Error(payload.error);
+            if (payload.done && payload.output_path) {
+              finalPath = payload.output_path;
+              lastSuggest = payload.suggest || null;
+              if (typeof payload.duration_s === "number") lastDuration = payload.duration_s;
+              if (payload.fit_applied) logEl.textContent += "\n[ffmpeg] duration fit applied.\n";
+            }
+            logEl.scrollTop = logEl.scrollHeight;
+          }
+        }
+        $("status").textContent = finalPath ? "Done." : "Finished (no path parsed).";
+        $("suggestPanel").hidden = true;
+        $("statsLine").textContent = "";
+        lastGeneratedPath = null;
+        lastSourceScript = null;
+        if (finalPath) {
+          lastGeneratedPath = finalPath;
+          lastSourceScript = body.text_file;
+          const base = finalPath.replace(/^.*[/\\]/, "");
+          $("lastBasename").textContent = base;
+          $("lastPathFull").textContent = finalPath;
+          $("lastOutputWrap").hidden = false;
+          $("pathOut").textContent = finalPath;
+          $("player").src = "/api/audio?path=" + encodeURIComponent(finalPath);
+          result.hidden = false;
+          $("postProcessSection").style.display = "";
+          await loadDocs(body.text_file);
+          await loadOutputs(finalPath);
+          if (lastDuration != null) {
+            $("statsLine").innerHTML =
+              `Playback <strong>${fmtDur(lastDuration)}</strong> (${lastDuration.toFixed(1)}s) at speed <strong>${Number(speed.value).toFixed(2)}</strong>. Change speed and Generate again, or tweak the clip above.`;
+          }
+          if (lastSuggest && typeof lastSuggest.suggested_speed === "number") {
+            showSuggestPanel(lastSuggest);
+          }
+        }
+      } catch (e) {
+        err.textContent = String(e.message || e);
+        err.hidden = false;
+        $("status").textContent = "";
+      } finally {
+        $("go").disabled = false;
+      }
+    });
+
+    loadDocs()
+      .then(() => loadOutputs())
+      .catch((e) => {
+        $("err").textContent = String(e);
+        $("err").hidden = false;
+      });
+  </script>
+</body>
+</html>

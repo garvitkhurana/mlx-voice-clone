@@ -4,3 +4,6 @@ __pycache__/
 outputs/
 _qwen3_clone_convert_*.wav
 .DS_Store
+*.pyc
+.idea/
+.vscode/

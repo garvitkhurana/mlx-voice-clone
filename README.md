@@ -1,12 +1,14 @@
 # Voice Clone
 
-Local **voice-cloned TTS** on macOS (Apple Silicon) using [mlx-audio](https://github.com/Blaizzy/mlx-audio) and Qwen3. Speak from a short reference clip, then generate narration from plain text — CLI or browser UI.
+Local **voice-cloned TTS** on macOS (Apple Silicon) via [mlx-audio](https://github.com/Blaizzy/mlx-audio) + Qwen3.
+
+Clone from a short reference clip, then narrate plain-text scripts — CLI or browser UI.
 
 ## Requirements
 
 - macOS + Apple Silicon
 - [uv](https://github.com/astral-sh/uv) (or Python 3.12+)
-- `ffmpeg` on `PATH` (Homebrew: `brew install ffmpeg`)
+- `ffmpeg` on `PATH` (`brew install ffmpeg`)
 - Network on first run (Hugging Face model download)
 
 ## Quick start
@@ -15,9 +17,12 @@ Local **voice-cloned TTS** on macOS (Apple Silicon) using [mlx-audio](https://gi
 cd voice-clone
 uv sync
 
+# Record a fresh reference clip (~15s) — speak the lines in documents/ref_voice_transcript.txt
+./scripts/record_sample.sh
+
 # CLI
 uv run python scripts/qwen3_clone.py \
-  --ref-audio ./securities_clip.m4a \
+  --ref-audio ./sample_clip.m4a \
   --ref-text-file documents/ref_voice_transcript.txt \
   --text-file documents/01_intro.txt \
   --quality lite \
@@ -33,34 +38,40 @@ uv run python scripts/tts_ui_server.py
 
 ```
 voice-clone/
-├── web/tts/index.html           # Browser UI (no build step)
+├── sample_clip.m4a                 # Reference voice (short)
+├── documents/
+│   ├── ref_voice_transcript.txt    # Exact words in sample_clip (skips Whisper)
+│   └── 01_intro.txt                # Demo narration script
 ├── scripts/
-│   ├── qwen3_clone.py           # CLI: synthesis, chunking, ffmpeg export
-│   ├── tts_ui_server.py         # FastAPI + SSE generate stream
-│   └── bench_clone.py           # Optional batch benchmark
-├── documents/                   # Narration scripts + ref transcript
-│   ├── ref_voice_transcript.txt # Words spoken in the ref clip
-│   └── *.txt                    # Scripts (UI lists newest first)
-├── securities_clip.m4a          # Default reference voice
-└── outputs/qwen3_clone/         # Generated audio (+ `_cache/`)
+│   ├── qwen3_clone.py              # CLI: synthesis, chunking, ffmpeg export
+│   ├── tts_ui_server.py            # FastAPI + SSE generate stream
+│   ├── record_sample.sh            # Record sample_clip from the mic
+│   └── bench_clone.py              # Optional batch benchmark
+├── web/tts/index.html              # Browser UI (no build step)
+└── outputs/qwen3_clone/            # Generated audio (+ `_cache/`)  [gitignored]
 ```
 
 | Piece | Role |
 |--------|------|
-| `scripts/qwen3_clone.py` | Inference source of truth — models, speed, chunks, export |
+| `scripts/qwen3_clone.py` | Inference source of truth |
 | `scripts/tts_ui_server.py` | Thin wrapper: runs the CLI as a subprocess, streams logs |
-| `web/tts/index.html` | Frontend; calls `/api/*` on the same origin |
+| `web/tts/index.html` | Frontend; `/api/*` on the same origin |
 
-**Output naming:** `HHMMSS_<script_stem>.m4a` (time prefix + script stem).
+**Output naming:** `HHMMSS_<script_stem>.m4a`
 
-## CLI details
+## Reference voice
+
+1. Edit `documents/ref_voice_transcript.txt` to the lines you will speak (~10–20s works well).
+2. Run `./scripts/record_sample.sh` (dialog → speak → writes `sample_clip.m4a`).
+3. Keep the transcript matched to the clip so synthesis can skip Whisper.
+
+## CLI notes
 
 - **`--ref-text-file`** skips Whisper on the reference clip (faster, repeatable).
-- Reference audio is converted to **24 kHz mono WAV** and cached under `outputs/qwen3_clone/_cache/`.
-- **Stdout:** last line is the output path. **Stderr:** stats / duration / optional target hint.
-- **Target length (hint only):** `--target-seconds 180` prints a suggested next `--speed`; re-run and listen.
-- **Export:** default AAC `.m4a` via ffmpeg. Raw WAV: `--output-format wav`. Keep both: `--output-format m4a --keep-wav`.
-- **Quality:** `lite` (0.6B) vs `pro` (1.7B). Use `lite` for iteration.
+- Ref audio is converted to **24 kHz mono WAV** and cached under `outputs/qwen3_clone/_cache/`.
+- **Stdout:** last line is the output path. **Stderr:** stats / duration.
+- **Quality:** `lite` (0.6B) for iteration, `pro` (1.7B) when you care about quality.
+- **Export:** default AAC `.m4a` via ffmpeg. Raw WAV: `--output-format wav`.
 
 ## Web UI
 
@@ -68,9 +79,13 @@ voice-clone/
 uv run python scripts/tts_ui_server.py
 ```
 
-Open **http://127.0.0.1:8765/** — pick a script, preview, generate, optional goal length, post-process (suggest speed / ffmpeg stretch).
+Open **http://127.0.0.1:8765/** — pick a script, generate, optional goal length / post-process.
 
-The UI does **not** make the model faster. Speed levers remain: `lite` vs `pro`, chunk size, `--fast`, ref text file, and cache.
+Speed levers: `lite` vs `pro`, chunk size, `--fast`, ref text file, and cache. The UI does not make the model faster.
+
+## Adding a narration script
+
+Drop a `.txt` in `documents/`, then pass `--text-file documents/your_script.txt` or refresh the UI list.
 
 ## Benchmark
 
@@ -79,19 +94,9 @@ uv run python scripts/bench_clone.py
 uv run python scripts/bench_clone.py --only 01_intro
 ```
 
-## Where to edit
-
-| Goal | File |
-|------|------|
-| UI / UX | `web/tts/index.html` |
-| API / subprocess wiring | `scripts/tts_ui_server.py` |
-| Model / audio pipeline | `scripts/qwen3_clone.py` |
-
-Use the web UI to smoke-test; use the CLI for automation and long batches.
-
 ## Troubleshooting
 
 **“Network error” / stream dies but a file still appears**  
-Generate uses a long-lived SSE stream. If the Mac sleeps or the browser suspends the tab, the connection can drop after the subprocess already wrote the file. Refresh the page, hit **Refresh** on the output list, or use the CLI. For long runs, keep the machine awake (`caffeinate` or Energy settings).
+Generate uses a long-lived SSE stream. If the Mac sleeps or the browser suspends the tab, the connection can drop after the subprocess already wrote the file. Refresh the page, hit **Refresh** on the output list, or use the CLI. For long runs, keep the machine awake.
 
-**Pitch** (separate from speaking speed): edit the exported file externally (e.g. a pitch shifter) without re-synthesizing.
+**Pitch** (separate from speaking speed): edit the exported file externally without re-synthesizing.

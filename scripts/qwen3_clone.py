@@ -7,9 +7,9 @@ network on first run (Hugging Face model cache).
 
 Example:
   uv run python scripts/qwen3_clone.py \\
-    --ref-audio ./samples/me.wav \\
-    --ref-text-file documents/ref_transcript.txt \\
-    --text-file documents/my_script.txt
+    --ref-audio ./sample_clip.m4a \\
+    --ref-text-file documents/ref_voice_transcript.txt \\
+    --text-file documents/01_intro.txt
 """
 
 from __future__ import annotations

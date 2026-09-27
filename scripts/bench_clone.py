@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 def _default_ref_audio() -> Path | None:
-    local = Path("securities_clip.m4a")
+    local = Path("sample_clip.m4a")
     return local if local.is_file() else None
 
 
@@ -61,7 +61,7 @@ def main() -> None:
         "--ref-audio",
         type=Path,
         default=_default_ref_audio(),
-        help="Reference audio (default: ./securities_clip.m4a if it exists).",
+        help="Reference audio (default: ./sample_clip.m4a if it exists).",
     )
     parser.add_argument(
         "--ref-text-file",

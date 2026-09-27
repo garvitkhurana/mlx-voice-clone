@@ -23,7 +23,7 @@ DEFAULT_OUT = REPO_ROOT / "outputs" / "qwen3_clone"
 
 
 def _default_ref_audio() -> Path | None:
-    p = REPO_ROOT / "securities_clip.m4a"
+    p = REPO_ROOT / "sample_clip.m4a"
     return p if p.is_file() else None
 
 
@@ -268,7 +268,7 @@ def fit_output(body: FitOutputBody) -> dict:
 def _build_qwen_cmd(body: GenerateBody) -> list[str]:
     ref = _default_ref_audio()
     if ref is None:
-        raise HTTPException(400, "Place securities_clip.m4a in the project root or extend the UI for ref audio.")
+        raise HTTPException(400, "Place sample_clip.m4a in the project root (see README) or extend the UI for ref audio.")
     tf = (DEFAULT_DOCS / body.text_file).resolve()
     if not str(tf).startswith(str(DEFAULT_DOCS.resolve())) or not tf.is_file():
         raise HTTPException(400, f"text file not found: {body.text_file}")

@@ -3,6 +3,7 @@ name = "mlx-voice-clone"
 version = "0.1.0"
 description = "Ref clip → cloned speech, fully local on Apple Silicon. Qwen3 (MLX) + FastAPI UI."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",

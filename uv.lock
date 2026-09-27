@@ -1540,7 +1540,7 @@ wheels = [
 ]
 
 [[package]]
-name = "voice-clone"
+name = "mlx-voice-clone"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

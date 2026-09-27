@@ -1,7 +1,7 @@
 [project]
-name = "voice-clone"
+name = "mlx-voice-clone"
 version = "0.1.0"
-description = "Local Qwen3 voice-clone TTS (MLX) — see README.md"
+description = "Ref clip → cloned speech, fully local on Apple Silicon. Qwen3 (MLX) + FastAPI UI."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

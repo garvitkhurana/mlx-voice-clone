@@ -1,4 +1,4 @@
-# Voice Clone
+# mlx-voice-clone
 
 Local **voice-cloned TTS** on macOS (Apple Silicon) via [mlx-audio](https://github.com/Blaizzy/mlx-audio) + Qwen3.
 
@@ -14,7 +14,7 @@ Clone from a short reference clip, then narrate plain-text scripts — CLI or br
 ## Quick start
 
 ```bash
-cd voice-clone
+cd mlx-voice-clone
 uv sync
 
 # Record a fresh reference clip (~15s) — speak the lines in documents/ref_voice_transcript.txt
@@ -37,7 +37,7 @@ uv run python scripts/tts_ui_server.py
 ## Layout
 
 ```
-voice-clone/
+mlx-voice-clone/
 ├── sample_clip.m4a                 # Reference voice (short)
 ├── documents/
 │   ├── ref_voice_transcript.txt    # Exact words in sample_clip (skips Whisper)

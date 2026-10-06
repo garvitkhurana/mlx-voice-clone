@@ -4,6 +4,11 @@ Local **voice-cloned TTS** on macOS (Apple Silicon) via [mlx-audio](https://gith
 
 Clone from a short reference clip, then narrate plain-text scripts — CLI or browser UI.
 
+
+https://github.com/user-attachments/assets/510d2a55-4af0-44fd-b8e6-bb04c399aefd
+
+
+
 ## Requirements
 
 - macOS + Apple Silicon
